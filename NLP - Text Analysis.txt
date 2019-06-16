@@ -1,0 +1,70 @@
+import nltk
+import numpy as np
+import pandas as pd
+from sklearn.feature_extraction.text import CountVectorizer
+from nltk.corpus import wordnet as wn
+
+files_vec = ['Cell_Phones_and_Accessories_5.json','Clothing_Shoes_and_Jewelry_5.json','Sports_and_Outdoors_5.json']
+
+for file_ix in files_vec:
+	data_df = pd.read_json(file_ix, lines=True)
+
+	## Convert column to date
+	data_df['reviewTime'] = data_df['reviewTime'].astype('datetime64[ns]')
+
+	## Review for 201 year
+	data_df_sub = data_df[(data_df['reviewTime'] > '2014-01-01') & (data_df['reviewTime'] <= '2014-01-31')]
+	data_reviews = data_df_sub['reviewText']
+	
+	#tagged_words = []
+	#for review_text in data_reviews.values:
+	#	tokens = nltk.word_tokenize(review_text)
+	#	tagged_words += nltk.pos_tag(tokens)
+
+	#cell_reviews = ["Hello This is Srinivas","Srinivas Srinivas Hello"]
+	vectorizer = CountVectorizer(stop_words='english')
+	data_text = vectorizer.fit_transform(data_reviews).toarray()
+
+	data_word_count = data_text.sum(axis=0)
+	data_word_count_sorted = np.argsort(data_word_count)[::-1]
+
+	word_dict = {}
+	for k,v in vectorizer.vocabulary_.items():
+		word_dict[v] = k
+
+	## Top 20 words
+	print("--------------------------------------------------")
+	print("Top 20 words for: %s" %(file_ix.split(".")[0]))
+	print("--------------------------------------------------")
+	for ix in data_word_count_sorted[:20]:
+		print(word_dict[ix])
+	
+	nound_words = []
+	advadj_words = []
+	nouns_cnt = 0
+	adjadv_cnt = 0
+	for word_ix in data_word_count_sorted:
+		word = word_dict[word_ix]
+		if wn.synsets(word):
+			if wn.synsets(word)[0].pos() == 'n':
+				nound_words.append(word)
+				nouns_cnt += 1
+			if (wn.synsets(word)[0].pos() == 'j') or (wn.synsets(word)[0].pos() == 'r'):
+				advadj_words.append(word)
+				adjadv_cnt += 1
+			if (adjadv_cnt >= 20) and (nouns_cnt >= 20):
+				break;			
+					
+	## Top 20 Nounds words
+	print("--------------------------------------------------")
+	print("Top 20 noun words for: %s" %(file_ix.split(".")[0]))
+	print("--------------------------------------------------")
+	for word in nound_words[:20]:
+		print(word)
+
+	## Top 20 Adverbs/Adjectives words
+	print("--------------------------------------------------")
+	print("Top 20 Adverbs/Adjectives words for: %s" %(file_ix.split(".")[0]))
+	print("--------------------------------------------------")
+	for word in advadj_words[:20]:
+		print(word)
